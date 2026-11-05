@@ -134,7 +134,7 @@ The nucleotide embeddings and projection weights are randomly initialized comput
 
 ### 5.1 Implementation
 
-The retrieval module divides the educational reference into overlapping text chunks and ranks passages using semantic similarity, lexical relevance, and heuristic query-intent adjustments.
+The retrieval module divides the educational reference into text chunks and ranks passages using semantic similarity, lexical relevance, and heuristic query-intent adjustments.
 
 The persistent retrieval artifacts are stored under:
 
@@ -162,11 +162,11 @@ The following table summarizes the recorded retrieval evaluation.
 
 | Query | Top-ranked source section | Cosine similarity | Ranking score |
 |---|---|---:|---:|
-| Refrigerated storage | Section 1 â€” Storage and Handling Requirements | 0.5558 | 0.6544 |
-| High-dose secondary review | Section 2 â€” Dosing Guidance by Age Band | 0.5063 | 0.6159 |
-| Longer monitoring | Section 3 â€” Contraindications and Warnings | 0.3492 | 0.4461 |
-| Adverse-event documentation | Section 4 â€” Adverse Event Documentation | 0.7609 | 0.7842 |
-| Temperature excursion | Section 1 â€” Storage and Handling Requirements | 0.3134 | 0.5090 |
+| Refrigerated storage | Section 1 — Storage and Handling Requirements | 0.5558 | 0.6544 |
+| High-dose secondary review | Section 2 — Dosing Guidance by Age Band | 0.5063 | 0.6159 |
+| Longer monitoring | Section 3 — Contraindications and Warnings | 0.3492 | 0.4461 |
+| Adverse-event documentation | Section 4 — Adverse Event Documentation | 0.7609 | 0.7842 |
+| Temperature excursion | Section 1 — Storage and Handling Requirements | 0.3134 | 0.5090 |
 
 For the high-dose query, Section 3 ranked a close second, with a ranking score of 0.6137. This demonstrates why the ranking score alone should not be used to determine whether a result is factually correct.
 
@@ -178,7 +178,15 @@ The dedicated regression test checks that both actions occur within the top two 
 
 The five recorded retrieval latencies ranged from approximately 0.0236 to 0.0341 seconds during this evaluation run. These values are observations from one run and are not guaranteed performance benchmarks.
 
-### 5.3 Limitations
+### 5.3 Chunking Configuration and Limitations
+
+The original project target specified 300–500-token chunks with approximately 50-token overlap.
+
+The selected embedding model has a maximum sequence length of 256 tokens. Consequently, the effective chunk size was limited to 254 tokens. The six generated chunks ranged from 45 to 252 tokens.
+
+The configured overlap is applied when splitting long sentences but is not consistently maintained between all sentence-packed chunks.
+
+Therefore, the implementation provides persistent retrieval and retrieval evaluation, but does not fully satisfy the original chunk-size and overlap targets.
 
 The evaluation covers only a small set of predefined questions. Semantic similarity and lexical relevance do not guarantee that a retrieved passage fully or correctly answers a question. Intent bonuses are heuristic rules and may not generalize to unseen queries.
 
@@ -202,7 +210,9 @@ Implements an OpenAI-compatible LangChain integration with structured-output val
 
 The latest verified sample report was generated using the offline rule-based path.
 
-The report artifacts are saved to:
+### 6.1 Generated Report Artifacts
+
+The validated sample report is saved in two formats:
 
 - `outputs/reports/sample_report.json`
 - `outputs/reports/sample_report.md`
@@ -211,13 +221,97 @@ Pipeline timing information is saved to:
 
 `outputs/report_generation_latency.json`
 
-The offline timing record distinguishes retrieval-stage time, model-scoring time, report-generation time, and total pipeline time. These measurements describe the recorded local execution and are not live LLM API performance benchmarks.
+The offline timing record distinguishes retrieval-stage time, model-scoring time, report-generation time, and total pipeline time. These measurements describe recorded local execution and are not live LLM API performance benchmarks.
 
-The report schema and validation logic enforce structural requirements, including mandatory fields and the required educational disclaimer. Schema validation does not guarantee factual correctness, complete source grounding, or clinical appropriateness.
+### 6.2 Structured Output Schema
+
+The report uses the `ClinicalSafetyReport` Pydantic model. It contains five output fields:
+
+| Field | Data type | Purpose |
+|---|---|---|
+| `Eligible_For_Vaccine` | Boolean | Demonstration eligibility output |
+| `Recommended_Dose_mg` | Float | Candidate dose value represented in milligrams |
+| `Reasoning_Steps` | List of strings | Explanation of the generated assessment |
+| `FDA_Safety_Warnings_Cited` | List of strings | Warning statements extracted from retrieved educational passages |
+| `Disclaimer` | String | Educational-use disclaimer |
+
+The saved sample report was checked against the expected field names and validated successfully using the Pydantic schema.
+
+### 6.3 Complete Generated JSON Report
+
+The following is the actual structured report generated by the offline report-generation pipeline and saved to `outputs/reports/sample_report.json`. It demonstrates the Pydantic-compatible output schema, including eligibility status, candidate dose conversion, reasoning steps, safety-warning references, and the mandatory educational disclaimer.
+
+```json
+{
+  "Eligible_For_Vaccine": false,
+  "Recommended_Dose_mg": 0.0835,
+  "Reasoning_Steps": [
+    "The experimental classifier returned a 'Low' label with a model score of 0.252. This score is not a clinically validated estimate of individual risk.",
+    "The source record lists a candidate dose of 83.5 micrograms (0.0835 mg). This is a unit conversion only, not a dose recommendation.",
+    "The recorded biomarker level is 4.530, but the supplied reference does not define a numerical threshold for an elevated biomarker. Its status cannot be classified reliably by this prototype.",
+    "The supplied course-project reference is not a verified clinical protocol. A qualified clinician must use current, product-specific official guidance for real medical decisions."
+  ],
+  "FDA_Safety_Warnings_Cited": [
+    "section 3 contraindications and warnings Absolute contraindications include a known severe allergic reaction to a prior dose of the same product or to any component of the formulation, and an active unresolved severe adverse reaction from a previous dose that has not been cleared by an allergist or treating physician.",
+    "Secondary review is required for three or more relevant pre-existing conditions, a prior moderate reaction to an mRNA-based product, a candidate dose exceeding 100 micrograms combined with an elevated biomarker level, or age under 5 years combined with any pre-existing condition.",
+    "Patients should be monitored for at least 15 minutes after administration, or 30 minutes for patients with a documented history of any allergic reaction.",
+    "Localized injection-site reactions do not by themselves require secondary review.",
+    "Systemic reactions lasting more than 48 hours should be documented and reported.",
+    "section 2 dosing guidance by age band Dose selection for mRNA therapeutic products is generally determined by age, body weight where applicable, and the specific clinical indication."
+  ],
+  "Disclaimer": "Student engineering project output only. Not real clinical, medical, or regulatory guidance."
+}
+```
+
+**Validation:** All five required fields are present, with four reasoning entries, six warning references, and the exact project disclaimer. The saved JSON is the source artifact for this example.
+
+**Important limitation:** This is an educational software demonstration using supplied project data and references. It is not a validated clinical report or a real vaccine eligibility or dosing recommendation.
+
+### 6.4 Data Grounding and Field Interpretation
+
+The report-generation workflow uses two principal inputs:
+
+1. Module 1: saved risk-model output and patient-record information.
+2. Module 3: retrieved passages from the educational reference document.
+
+The report fields have the following intended roles:
+
+- `Eligible_For_Vaccine`: a demonstration output produced by the report-generation logic. It is not a real-world eligibility determination.
+- `Recommended_Dose_mg`: a candidate numerical value converted into milligrams. It must not be interpreted as a dosing recommendation.
+- `Reasoning_Steps`: records the reasoning used by the educational report-generation workflow.
+- `FDA_Safety_Warnings_Cited`: contains warning statements selected from retrieved educational passages.
+- `Disclaimer`: communicates the non-clinical and educational purpose of the project.
+
+The offline implementation applies its own explicit-dose checks and secondary-review logic. These are software demonstration rules, not validated medical thresholds or dosing policies.
+
+### 6.5 Validation and Error Handling
+
+The Pydantic schema validates the expected field names and types, including a non-negative numerical dose value and non-empty reasoning and warning lists.
+
+The report-generation implementation includes validation retry behavior. The LLM-based path attempts structured generation again following a Pydantic validation failure.
+
+The saved sample report was verified with the following results:
+
+| Validation check | Result |
+|---|---|
+| Exact expected field names | Passed |
+| Pydantic schema validation | Passed |
+| Eligibility field | `false` |
+| Candidate dose value | `0.0835 mg` |
+| Reasoning entries | 4 |
+| Warning entries | 6 |
+| Exact educational disclaimer | Passed |
+| Matching Markdown report | Passed |
+
+These results verify the saved offline report artifact. They do not demonstrate successful execution of the live LLM integration.
+
+### 6.6 Limitations
+
+The offline report generator uses deterministic software logic and retrieved text. The LLM integration is implemented but remains unverified through an actual API call.
+
+Schema validation confirms structural correctness, not factual correctness, complete source grounding, or clinical appropriateness. The project also does not establish that retrieved educational warnings are authoritative or suitable for real-world decisions.
 
 Any eligibility, dose-conversion, or risk-related fields in the generated report are demonstration outputs. They must not be interpreted as real-world medical recommendations or dosing policies.
-
-The report-generation tests also verify validation retry behavior, report file creation, warning extraction from retrieved passages, and rejection of ungrounded warning content.
 
 ## 7. Dashboard and Visual Outputs
 
@@ -318,13 +412,15 @@ The project has several important limitations:
 2. **Limited model evaluation:** Metrics are based on a particular train-test split and do not demonstrate external validity.
 3. **Illustrative attention:** The attention components are not biologically trained and do not establish biological relationships.
 4. **Retrieval limitations:** Some queries may return passages that are related to a topic but do not fully answer the question.
-5. **Report-generation limitations:** Schema validation does not establish factual correctness or clinical safety.
-6. **Incomplete test coverage:** Automated tests cover selected software behaviors, not every module or execution path.
-7. **No clinical validation:** The project has not been validated for patient care, vaccine eligibility, dosing, or regulatory use.
-8. **Educational source limitations:** The source reference is not an authoritative clinical or regulatory document.
-9. **Live LLM testing limitation:** The LLM integration is implemented but has not been verified through an actual API call.
+5. **Chunking limitations:** The selected embedding model restricts the effective chunk size below the original 300–500-token target, and overlap is not consistently maintained.
+6. **Report-generation limitations:** Schema validation does not establish factual correctness or clinical safety.
+7. **Incomplete test coverage:** Automated tests cover selected software behaviors, not every module or execution path.
+8. **No clinical validation:** The project has not been validated for patient care, vaccine eligibility, dosing, or regulatory use.
+9. **Educational source limitations:** The source reference is not an authoritative clinical or regulatory document.
+10. **Live LLM testing limitation:** The LLM integration is implemented but has not been verified through an actual API call.
+11. **Dashboard latency limitation:** The dashboard compares retrieval with offline report-generation latency rather than live LLM response time.
 
-Future work could include more comprehensive automated testing, broader retrieval evaluation, improved source traceability, independent model evaluation, and clearer error handling.
+Future work could include more comprehensive automated testing, broader retrieval evaluation, improved source traceability, improved chunking, independent model evaluation, and clearer error handling.
 
 Any real-world medical application would require authoritative sources, qualified clinical oversight, privacy and security controls, and rigorous validation appropriate to its intended use.
 
@@ -424,6 +520,6 @@ The latest verified results include:
 - Successful offline structured report generation in JSON and Markdown.
 - Successful generation of the consolidated dashboard.
 
-The project demonstrates implementation progress and software integration rather than clinical validity. Its synthetic dataset, limited evaluation scope, illustrative attention weights, educational reference material, and untested live LLM integration define important boundaries on the conclusions that can be drawn.
+The project demonstrates implementation progress and software integration rather than clinical validity. Its synthetic dataset, limited evaluation scope, illustrative attention weights, educational reference material, chunking constraints, and untested live LLM integration define important boundaries on the conclusions that can be drawn.
 
 **mRNA-VIP is an educational AI engineering project only. It is not a clinically validated safety, eligibility, or dosing system and must not be used for medical or regulatory decisions.**
