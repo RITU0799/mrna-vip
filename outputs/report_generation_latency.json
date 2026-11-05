@@ -1,0 +1,8 @@
+{
+  "report_generation_mode": "offline_rule_based",
+  "retrieval_seconds": 0.096702,
+  "retrieval_stage_seconds": 5.152115,
+  "model_scoring_seconds": 0.185779,
+  "report_generation_seconds": 0.004393,
+  "total_pipeline_seconds": 5.354854
+}

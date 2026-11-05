@@ -1,0 +1,8 @@
+Pre_Existing_Conditions,count,mean,feature,Prior_Reaction_History
+0.0,165,0.3333333333333333,Pre_Existing_Conditions,
+1.0,154,0.44805194805194803,Pre_Existing_Conditions,
+2.0,94,0.6063829787234043,Pre_Existing_Conditions,
+3.0,59,0.6779661016949152,Pre_Existing_Conditions,
+4.0,28,0.8571428571428571,Pre_Existing_Conditions,
+,458,0.4737991266375546,Prior_Reaction_History,Mild
+,42,0.6666666666666666,Prior_Reaction_History,Moderate

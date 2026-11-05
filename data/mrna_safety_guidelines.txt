@@ -1,0 +1,32 @@
+MODERNA mRNA Therapeutic Products
+Clinical Safety Storage and Dosing Reference Guide
+
+Case study reference referencing Moderna's public mRNA work. This document is a course-project source and must not be presented as real clinical or regulatory guidance.
+
+Section 1 Storage and Handling Requirements
+Unopened mRNA lipid nanoparticle formulations are stored at ultra-low temperature, typically between -25C and -15C for extended shelf life, or between -80C and -60C for maximum shelf-life formulations. Product removed from ultra-low storage and placed under refrigeration (2C to 8C) is generally considered stable for up to 30 days, after which it must be discarded if unused. Once a vial is punctured, its contents must be used within the manufacturer-specified in-use window, typically 6 to 12 hours when stored at room temperature.
+
+Refrigerated storage (2C to 8C) is acceptable for short-term use immediately prior to administration. Product must never be refrozen once thawed. Vials should be kept upright and protected from light at all times, as mRNA formulations are photosensitive and repeated freeze-thaw cycles degrade the lipid nanoparticle structure.
+
+During transport, validated cold-chain shipping containers with continuous temperature logging are required. Any excursion above -15C for formulations requiring ultra-low storage must be documented and reviewed before the affected batch is approved for patient use. Deviations lasting longer than 1 hour require the batch to be quarantined pending quality review.
+
+Prior to administration, vials must be visually inspected for particulate matter or discoloration. Product exhibiting visible particulates, cloudiness inconsistent with the expected formulation appearance, or any container damage must not be administered and should be reported through the standard product-quality complaint process.
+
+Section 2 Dosing Guidance by Age Band
+Dose selection for mRNA therapeutic products is generally determined by age, body weight where applicable, and the specific clinical indication. As a general reference range across mRNA vaccine platforms, primary-series doses commonly fall between 25 and 100 micrograms, while booster or lower-reactogenicity formulations are frequently dosed between 25 and 50 micrograms. Doses above 100 micrograms are considered high-reactogenicity doses and require secondary clinician review before administration.
+
+Ages 6 months to 4 years require the lowest available dose tier and pediatric-formulated product. Ages 5 to 11 years use an intermediate pediatric dose tier, generally half the standard adult dose. Ages 12 to 64 years use the standard adult dosing range. Ages 65 and older use the standard adult range, but patients with two or more relevant pre-existing conditions must be flagged for secondary clinician review.
+
+Patients presenting with an inflammatory biomarker level meaningfully above the normal reference range should have dosing deferred until it returns to normal, or receive the lowest clinically appropriate dose tier with enhanced post-administration monitoring, at the administering clinician's discretion.
+
+Section 3 Contraindications and Warnings
+Absolute contraindications include a known severe allergic reaction to a prior dose of the same product or to any component of the formulation, and an active unresolved severe adverse reaction from a previous dose that has not been cleared by an allergist or treating physician.
+
+Secondary review is required for three or more relevant pre-existing conditions, a prior moderate reaction to an mRNA-based product, a candidate dose exceeding 100 micrograms combined with an elevated biomarker level, or age under 5 years combined with any pre-existing condition.
+
+Patients should be monitored for at least 15 minutes after administration, or 30 minutes for patients with a documented history of any allergic reaction. Localized injection-site reactions do not by themselves require secondary review. Systemic reactions lasting more than 48 hours should be documented and reported.
+
+Section 4 Adverse Event Documentation
+Any adverse event classified as moderate or severe must be documented within 24 hours of occurrence, including onset time, duration, severity, and any treatment administered. Mild, self-limiting reactions consistent with expected reactogenicity do not require individual reporting but should be captured in aggregate monitoring where available.
+
+An adverse event should be escalated to clinical safety review if it involves hospitalization, is life-threatening, results in persistent disability, or is otherwise considered medically significant by the administering clinician.

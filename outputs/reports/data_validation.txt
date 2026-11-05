@@ -1,0 +1,43 @@
+mRNA Vaccine Clinical Safety (mRNA VIP)
+DATA VALIDATION AND CLEANING REPORT
+=======================================================
+
+IMPORTANT: Educational course project only.
+Not intended for real clinical or medical decision-making.
+
+Number of records: 500
+Number of columns: 7
+Biomarker median used: 4.8200
+Prior reaction history mode used: Mild
+Duplicate patient IDs: 0
+
+Missing values BEFORE cleaning:
+  Patient_ID: 0
+  Age: 0
+  Biomarker_Level: 20
+  Pre_Existing_Conditions: 0
+  Vaccine_Dose_mcg: 0
+  Prior_Reaction_History: 308
+  Reaction_Score: 0
+
+Missing values AFTER cleaning:
+  Patient_ID: 0
+  Age: 0
+  Biomarker_Level: 0
+  Pre_Existing_Conditions: 0
+  Vaccine_Dose_mcg: 0
+  Prior_Reaction_History: 0
+  Reaction_Score: 0
+
+Reaction_Score distribution:
+  0: 255
+  1: 245
+
+DATA QUALITY NOTES
+-------------------------------------------------------
+Prior_Reaction_History may contain missing values in the supplied dataset.
+Mode imputation follows the project specification, but imputation can introduce bias.
+Missingness and the imputation approach should be discussed when interpreting model results.
+Feature standardization is performed in the model pipeline, where the scaler is fitted on training data.
+
+This report documents preprocessing only; it does not establish clinical safety or vaccine eligibility.

@@ -1,0 +1,26 @@
+Model: random_forest
+Training records: 400
+Testing records: 100
+
+Evaluation metrics:
+model        random_forest
+accuracy              0.73
+precision         0.729167
+recall            0.714286
+f1_score          0.721649
+roc_auc            0.77391
+
+Classification report:
+                  precision    recall  f1-score   support
+
+Reaction_Score_0       0.73      0.75      0.74        51
+Reaction_Score_1       0.73      0.71      0.72        49
+
+        accuracy                           0.73       100
+       macro avg       0.73      0.73      0.73       100
+    weighted avg       0.73      0.73      0.73       100
+
+
+Confusion matrix:
+[[38 13]
+ [14 35]]

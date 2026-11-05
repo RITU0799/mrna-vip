@@ -1,0 +1,26 @@
+Model: logistic_regression
+Training records: 400
+Testing records: 100
+
+Evaluation metrics:
+model        logistic_regression
+accuracy                    0.71
+precision               0.708333
+recall                  0.693878
+f1_score                0.701031
+roc_auc                 0.791116
+
+Classification report:
+                  precision    recall  f1-score   support
+
+Reaction_Score_0       0.71      0.73      0.72        51
+Reaction_Score_1       0.71      0.69      0.70        49
+
+        accuracy                           0.71       100
+       macro avg       0.71      0.71      0.71       100
+    weighted avg       0.71      0.71      0.71       100
+
+
+Confusion matrix:
+[[37 14]
+ [15 34]]

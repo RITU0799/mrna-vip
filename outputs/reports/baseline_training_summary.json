@@ -1,0 +1,31 @@
+{
+    "dataset_rows": 500,
+    "feature_count": 5,
+    "training_rows": 400,
+    "testing_rows": 100,
+    "target_column": "Reaction_Score",
+    "excluded_identifier_columns": [
+        "Patient_ID"
+    ],
+    "random_state": 42,
+    "test_size": 0.2,
+    "models": [
+        {
+            "model": "logistic_regression",
+            "accuracy": 0.71,
+            "precision": 0.7083333333333334,
+            "recall": 0.6938775510204082,
+            "f1_score": 0.7010309278350515,
+            "roc_auc": 0.7911164465786314
+        },
+        {
+            "model": "random_forest",
+            "accuracy": 0.73,
+            "precision": 0.7291666666666666,
+            "recall": 0.7142857142857143,
+            "f1_score": 0.7216494845360825,
+            "roc_auc": 0.7739095638255301
+        }
+    ],
+    "interpretation_note": "These results are from a single held-out split of a learning dataset. They do not establish clinical validity."
+}
