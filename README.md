@@ -97,7 +97,7 @@ To enable LLM mode:
 
 The API key must remain private and `.env` must never be committed. The default model is `gpt-4o-mini`; override it with `MRNA_VIP_LLM_MODEL` if needed. `MRNA_VIP_USE_LLM=true` enables LLM mode for the pipeline runner; otherwise the pipeline remains offline by default.
 
-The LLM path retries once only when Pydantic schema validation fails. Deterministic post-generation guardrails force `Eligible_For_Vaccine` to `false`, replace the dose field with the source-record dose converted from micrograms to milligrams (not a recommendation), enforce the fixed educational disclaimer, and discard warning text not found in retrieved source chunks. The legacy field name `FDA_Safety_Warnings_Cited` is retained for PRD schema compatibility; the values are excerpts from the supplied educational course reference, **not verified FDA citations**.
+The LLM path retries once only when Pydantic schema validation fails. Deterministic post-generation guardrails force `Eligible_For_Vaccine` to `false`, replace the dose field with the source-record dose converted from micrograms to milligrams (not a recommendation), enforce the fixed educational disclaimer, and discard warning text not found in retrieved source chunks. The legacy field name `Retrieved_Safety_Reference_Excerpts` is retained for PRD schema compatibility; the values are excerpts from the supplied educational course reference, **not verified FDA citations**.
 
 The report and its decision-related fields are illustrative outputs. Schema validation checks structure; it does not establish factual or clinical correctness. The 100-microgram secondary-review threshold in the supplied course reference is not interpreted as a maximum safe dose.
 

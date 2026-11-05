@@ -18,10 +18,9 @@ CHUNK_SIZE = 400
 CHUNK_OVERLAP = 50
 MIN_SIMILARITY = 0.01
 
-# Keep the lexical contribution small and transparent.
 LEXICAL_WEIGHT = 0.25
 
-EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+EMBEDDING_MODEL_NAME = "sentence-transformers/all-distilroberta-v1"
 COLLECTION_NAME = "mrna_safety_guidelines"
 
 SECTION_PATTERN = re.compile(
@@ -38,7 +37,6 @@ STOP_WORDS = {
     "required", "longer",
 }
 
-# Transparent query-term expansion for concepts used in this source.
 QUERY_EXPANSIONS = {
     "monitoring": {
         "monitor", "monitored", "monitoring", "minutes",
@@ -88,163 +86,88 @@ def _token_count(text: str, tokenizer) -> int:
 
 def _split_token_ids(
     token_ids: list[int],
-    tokenizer,
     chunk_size: int = CHUNK_SIZE,
     overlap: int = CHUNK_OVERLAP,
-) -> list[str]:
-    """Split oversized text into overlapping token chunks."""
-    if chunk_size < 1:
-        raise ValueError("chunk_size must be at least 1.")
-    if overlap < 0 or overlap >= chunk_size:
-        raise ValueError("overlap must be between 0 and chunk_size - 1.")
+) -> list[tuple[int, int]]:
+    """Return balanced token windows with the requested overlap."""
+    total_tokens = len(token_ids)
 
-    chunks = []
+    if total_tokens == 0:
+        return []
+
+    if chunk_size <= overlap:
+        raise ValueError("chunk_size must be greater than overlap.")
+
+    if total_tokens <= chunk_size:
+        return [(0, total_tokens)]
+
+    # Distribute tokens evenly rather than leaving a short final chunk.
+    n_chunks = (total_tokens - overlap + (chunk_size - overlap) - 1) // (
+        chunk_size - overlap
+    )
+
+    total_window_tokens = total_tokens + overlap * (n_chunks - 1)
+    base_size, remainder = divmod(total_window_tokens, n_chunks)
+
+    if base_size < 300 or base_size + (1 if remainder else 0) > chunk_size:
+        raise ValueError(
+            "Cannot divide this document into compliant chunks "
+            "with the configured chunk size and overlap."
+        )
+
+    spans = []
     start = 0
 
-    while start < len(token_ids):
-        end = min(start + chunk_size, len(token_ids))
-        piece = tokenizer.decode(
-            token_ids[start:end],
-            skip_special_tokens=True,
-        ).strip()
-
-        if piece:
-            chunks.append(piece)
-
-        if end == len(token_ids):
-            break
-
+    for index in range(n_chunks):
+        current_size = base_size + (1 if index < remainder else 0)
+        end = min(start + current_size, total_tokens)
+        spans.append((start, end))
         start = end - overlap
 
-    return chunks
+    return spans
 
 
-def chunk_text(
-    text: str,
-    chunk_size: int = CHUNK_SIZE,
-    overlap: int = CHUNK_OVERLAP,
-) -> list[str]:
-    """Create section-aware chunks without cutting ordinary sentences."""
-    if chunk_size < 1:
-        raise ValueError("chunk_size must be at least 1.")
-    if overlap < 0 or overlap >= chunk_size:
-        raise ValueError("overlap must be between 0 and chunk_size - 1.")
-
-    text = text.strip()
-    if not text:
+def chunk_text(text: str) -> list[str]:
+    """Create balanced, overlapping chunks using the embedding tokenizer."""
+    if not text or not text.strip():
         return []
 
     model = _get_embedding_model()
     tokenizer = model.tokenizer
-    effective_size = min(chunk_size, model.max_seq_length - 2)
-    chunks: list[str] = []
 
-    sections = SECTION_PATTERN.split(text)
+    token_ids = tokenizer.encode(
+        text,
+        add_special_tokens=False,
+    )
 
-    for section in sections:
-        section = section.strip()
-        if not section:
-            continue
+    spans = _split_token_ids(
+        token_ids,
+        chunk_size=CHUNK_SIZE,
+        overlap=CHUNK_OVERLAP,
+    )
 
-        paragraphs = [
-            paragraph.strip()
-            for paragraph in PARAGRAPH_PATTERN.split(section)
-            if paragraph.strip()
-        ]
-        if not paragraphs:
-            continue
+    chunks = []
 
-        first_paragraph = paragraphs[0]
-        first_line, separator, first_body = first_paragraph.partition("\n")
-
-        if separator and first_line.strip().lower().startswith("section "):
-            heading = first_line.strip()
-            body_parts = [first_body.strip(), *paragraphs[1:]]
-        else:
-            heading = first_paragraph
-            body_parts = paragraphs[1:]
-
-        body = "\n\n".join(
-            part for part in body_parts if part
-        ).strip()
-
-        heading_ids = tokenizer.encode(
-            heading,
-            add_special_tokens=False,
-        )
-        heading_text = tokenizer.decode(
-            heading_ids[:60],
+    for index, (start, end) in enumerate(spans):
+        chunk = tokenizer.decode(
+            token_ids[start:end],
             skip_special_tokens=True,
+            clean_up_tokenization_spaces=False,
         ).strip()
 
-        heading_tokens = _token_count(heading_text, tokenizer)
-        body_budget = effective_size - heading_tokens
+        actual_count = len(
+            tokenizer.encode(chunk, add_special_tokens=False)
+        )
 
-        if body_budget < 1:
+        if not 300 <= actual_count <= CHUNK_SIZE:
             raise ValueError(
-                "Chunk size is too small for the section heading."
+                f"Chunk {index + 1} contains {actual_count} tokens "
+                f"after decoding. Expected 300 to {CHUNK_SIZE} tokens."
             )
 
-        if not body:
-            chunks.append(heading_text)
-            continue
+        chunks.append(chunk)
 
-        sentences = [
-            sentence.strip()
-            for sentence in re.split(r"(?<=[.!?])\s+", body)
-            if sentence.strip()
-        ]
-
-        current: list[str] = []
-        current_tokens = 0
-
-        def flush() -> None:
-            nonlocal current, current_tokens
-
-            if not current:
-                return
-
-            chunk = f"{heading_text}\n{' '.join(current)}".strip()
-
-            if _token_count(chunk, tokenizer) <= effective_size:
-                chunks.append(chunk)
-
-            current = []
-            current_tokens = 0
-
-        for sentence in sentences:
-            sentence_tokens = _token_count(sentence, tokenizer)
-
-            if sentence_tokens > body_budget:
-                flush()
-
-                pieces = _split_token_ids(
-                    tokenizer.encode(
-                        sentence,
-                        add_special_tokens=False,
-                    ),
-                    tokenizer,
-                    chunk_size=body_budget,
-                    overlap=min(overlap, body_budget - 1),
-                )
-
-                for piece in pieces:
-                    chunk = f"{heading_text}\n{piece}".strip()
-
-                    if _token_count(chunk, tokenizer) <= effective_size:
-                        chunks.append(chunk)
-                continue
-
-            if current and current_tokens + sentence_tokens > body_budget:
-                flush()
-
-            current.append(sentence)
-            current_tokens += sentence_tokens
-
-        flush()
-
-    # Remove exact duplicates without changing chunk order.
-    return list(dict.fromkeys(chunks))
+    return chunks
 
 
 def _make_client(persist_dir: str | Path):
@@ -267,14 +190,17 @@ def build_index(
         )
 
     raw = source.read_text(encoding="utf-8").strip()
+
     if not raw:
         raise ValueError("Guideline source file is empty.")
 
     chunks = chunk_text(raw)
+
     if not chunks:
         raise ValueError("No searchable text chunks were created.")
 
     model = _get_embedding_model()
+
     embeddings = model.encode(
         chunks,
         normalize_embeddings=True,
@@ -287,6 +213,7 @@ def build_index(
         client.delete_collection(name=COLLECTION_NAME)
     except Exception as exc:
         message = str(exc).lower()
+
         if "does not exist" not in message and "not found" not in message:
             raise
 
@@ -300,12 +227,16 @@ def build_index(
         documents=chunks,
         embeddings=embeddings.tolist(),
         metadatas=[
-            {"chunk_index": i, "source_file": source.name}
+            {
+                "chunk_index": i,
+                "source_file": source.name,
+            }
             for i in range(len(chunks))
         ],
     )
 
     destination = Path(persist_dir)
+
     metadata = {
         "source_file": source.name,
         "chunk_count": len(chunks),
@@ -313,9 +244,10 @@ def build_index(
         "overlap_tokens": CHUNK_OVERLAP,
         "backend": "ChromaDB persistent vector store",
         "embedding_model": EMBEDDING_MODEL_NAME,
+        "embedding_dimension": model.get_embedding_dimension(),
         "distance_metric": "cosine",
-        "section_aware": True,
-        "sentence_aware": True,
+        "section_aware": False,
+        "sentence_aware": False,
         "retrieval_ranking": (
             "cosine similarity, lexical relevance, and targeted intent bonus"
         ),
@@ -347,6 +279,14 @@ def load_index(persist_dir: str | Path) -> dict:
     if not metadata_path.exists():
         raise FileNotFoundError(
             f"Index metadata not found: {metadata_path}. Build the index first."
+        )
+
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+
+    if metadata.get("embedding_model") != EMBEDDING_MODEL_NAME:
+        raise ValueError(
+            "The saved index uses a different embedding model. "
+            "Rebuild the index before querying."
         )
 
     client = _make_client(destination)
@@ -389,6 +329,7 @@ def _lexical_relevance(question: str, document: str) -> float:
         return 0.0
 
     expanded_terms = set(query_terms)
+
     for term in query_terms:
         expanded_terms.update(QUERY_EXPANSIONS.get(term, set()))
 
@@ -410,7 +351,6 @@ def _intent_bonus(question: str, document: str) -> float:
     doc = document.lower()
     bonus = 0.0
 
-    # Monitoring duration and allergy-history exception
     if (
         ("monitoring" in q or "monitor" in q)
         and "patients should be monitored" in doc
@@ -418,7 +358,6 @@ def _intent_bonus(question: str, document: str) -> float:
     ):
         bonus += 0.08
 
-    # Temperature-excursion documentation and review
     if (
         "excursion" in q
         and "excursion" in doc
@@ -426,7 +365,6 @@ def _intent_bonus(question: str, document: str) -> float:
     ):
         bonus += 0.05
 
-    # Quarantine requirement for prolonged temperature deviations
     if (
         "excursion" in q
         and "quarantined pending quality review" in doc
@@ -442,19 +380,18 @@ def retrieve_scored(
     k: int = 3,
     min_similarity: float = MIN_SIMILARITY,
 ) -> tuple[list[dict], float]:
-    """Retrieve and rank chunks using semantic, lexical, and intent scores.
-
-    `similarity` remains the original cosine similarity.
-    `ranking_score` is a separate score used only for ordering results.
-    """
+    """Retrieve and rank chunks using semantic, lexical, and intent scores."""
     if not question.strip():
         raise ValueError("Question cannot be empty.")
+
     if k < 1:
         raise ValueError("k must be at least 1.")
+
     if not 0 <= min_similarity <= 1:
         raise ValueError("min_similarity must be between 0 and 1.")
 
     started = time.perf_counter()
+
     collection = index["collection"]
     model = index["model"]
     count = collection.count()
@@ -475,12 +412,15 @@ def retrieve_scored(
     )
 
     results = []
+
     documents = response.get("documents", [[]])[0]
     distances = response.get("distances", [[]])[0]
     metadatas = response.get("metadatas", [[]])[0]
 
     for document, distance, metadata in zip(
-        documents, distances, metadatas
+        documents,
+        distances,
+        metadatas,
     ):
         similarity = max(
             0.0,
@@ -512,6 +452,7 @@ def retrieve_scored(
         key=lambda item: item["ranking_score"],
         reverse=True,
     )
+
     latency = time.perf_counter() - started
 
     return results[:k], latency
@@ -527,9 +468,15 @@ def query_guidelines(
     if index is None:
         if persist_dir is None:
             raise ValueError("Provide an in-memory index or persist_dir.")
+
         index = load_index(persist_dir)
 
-    results, latency = retrieve_scored(question, index, k=k)
+    results, latency = retrieve_scored(
+        question,
+        index,
+        k=k,
+    )
+
     return [item["chunk"] for item in results], latency
 
 
@@ -537,6 +484,7 @@ def run_retrieval_demo(project_root: Path) -> list[dict]:
     """Build the index, test five queries, and write the results report."""
     store = project_root / "outputs" / "chroma_store"
     source = project_root / "data" / "mrna_safety_guidelines.txt"
+
     index = build_index(source, store)
 
     questions = [
@@ -555,6 +503,7 @@ def run_retrieval_demo(project_root: Path) -> list[dict]:
             index,
             k=3,
         )
+
         results.append({
             "question": question,
             "matches": matches,
@@ -584,6 +533,7 @@ def run_retrieval_demo(project_root: Path) -> list[dict]:
                 .replace("\n", " ")
                 .replace("|", "/")
             )
+
             if len(preview) > 220:
                 preview = preview[:220].rsplit(" ", 1)[0] + "..."
 
@@ -598,6 +548,13 @@ def run_retrieval_demo(project_root: Path) -> list[dict]:
 
     lines.extend([
         "",
+        "## Chunking configuration",
+        "",
+        f"- Embedding model: `{EMBEDDING_MODEL_NAME}`",
+        f"- Target chunk size: {CHUNK_SIZE} tokens",
+        f"- Target overlap: {CHUNK_OVERLAP} tokens",
+        f"- Actual indexed chunks: {len(index['chunks'])}",
+        "",
         "## Interpretation and limitations",
         "",
         "- Cosine similarity measures semantic closeness, not factual correctness.",
@@ -605,7 +562,7 @@ def run_retrieval_demo(project_root: Path) -> list[dict]:
         "- Intent bonuses are explicit heuristics and require evaluation against test queries.",
         "- Inspect retrieved passages against the original educational source.",
         "- A missing result does not prove that the source lacks an answer.",
-        "- Sentence-aware chunking reduces, but cannot eliminate, truncation.",
+        "- Token-based chunk boundaries can occur within sentences.",
         "",
         "## Failure analysis",
         "",
@@ -634,6 +591,7 @@ def run_retrieval_demo(project_root: Path) -> list[dict]:
 
     report_path = project_root / "outputs" / "retrieval_tests.md"
     report_path.parent.mkdir(parents=True, exist_ok=True)
+
     report_path.write_text(
         "\n".join(lines),
         encoding="utf-8",

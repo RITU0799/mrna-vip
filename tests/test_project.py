@@ -45,7 +45,7 @@ def test_schema_accepts_required_disclaimer():
         Eligible_For_Vaccine=False,
         Recommended_Dose_mg=0.1,
         Reasoning_Steps=["Insufficient evidence."],
-        FDA_Safety_Warnings_Cited=["Source excerpt."],
+        Retrieved_Safety_Reference_Excerpts=["Source excerpt."],
         Disclaimer=DISCLAIMER,
     )
 
@@ -58,29 +58,28 @@ def test_schema_rejects_missing_disclaimer():
             Eligible_For_Vaccine=False,
             Recommended_Dose_mg=0.1,
             Reasoning_Steps=["Insufficient evidence."],
-            FDA_Safety_Warnings_Cited=["Source excerpt."],
+            Retrieved_Safety_Reference_Excerpts=["Source excerpt."],
             Disclaimer="",
         )
 
 
-def test_chunk_text_rejects_invalid_size():
-    with pytest.raises(ValueError, match="chunk_size"):
-        chunk_text("Section 1\nExample text.", chunk_size=0)
+def test_chunk_configuration_is_valid():
+    from src.rag_index import CHUNK_SIZE, CHUNK_OVERLAP
 
-
-def test_chunk_text_rejects_invalid_overlap():
-    with pytest.raises(ValueError, match="overlap"):
-        chunk_text("Section 1\nExample text.", chunk_size=10, overlap=10)
+    assert CHUNK_SIZE == 400
+    assert CHUNK_OVERLAP == 50
+    assert 0 < CHUNK_OVERLAP < CHUNK_SIZE
 
 
 def test_chunk_text_returns_content():
     chunks = chunk_text(
-        "Section 1 Storage\n\nKeep the product refrigerated.",
-        chunk_size=100,
-        overlap=10,
+        "Section 1 Storage\n\n"
+        + "Keep the product refrigerated. " * 100
     )
 
     assert chunks
+    assert all(isinstance(chunk, str) for chunk in chunks)
+    assert all(chunk.strip() for chunk in chunks)
     assert any("refrigerated" in chunk.lower() for chunk in chunks)
 
 

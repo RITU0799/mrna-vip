@@ -241,7 +241,7 @@ def grounded_report(
         Eligible_For_Vaccine=eligible,
         Recommended_Dose_mg=dose_mg,
         Reasoning_Steps=reasoning,
-        FDA_Safety_Warnings_Cited=warnings,
+        Retrieved_Safety_Reference_Excerpts=warnings,
         Disclaimer=DISCLAIMER,
     )
 
@@ -321,7 +321,7 @@ citations, thresholds, contraindications, or recommendations.
 Return a ClinicalSafetyReport with exactly these fields:
 Eligible_For_Vaccine (boolean), Recommended_Dose_mg (number),
 Reasoning_Steps (non-empty list of strings),
-FDA_Safety_Warnings_Cited (non-empty list of strings), Disclaimer (string).
+Retrieved_Safety_Reference_Excerpts (non-empty list of strings), Disclaimer (string).
 
 Mandatory constraints:
 - Set Eligible_For_Vaccine to false. This prototype cannot establish eligibility.
@@ -382,10 +382,10 @@ def build_llm_report_with_retry(
             # Only retain warning text supported by the retrieved source.
             source = " ".join(chunks).casefold()
             grounded_warnings = [
-                warning for warning in candidate.FDA_Safety_Warnings_Cited
+                warning for warning in candidate.Retrieved_Safety_Reference_Excerpts
                 if warning.casefold() in source
             ]
-            safe_data["FDA_Safety_Warnings_Cited"] = (
+            safe_data["Retrieved_Safety_Reference_Excerpts"] = (
                 grounded_warnings[:6] or [
                     "No directly matching warning excerpt was verified "
                     "in the retrieved educational source."
@@ -450,7 +450,7 @@ def save_report(
     )
 
     markdown.extend(
-        f"> {item}" for item in report.FDA_Safety_Warnings_Cited
+        f"> {item}" for item in report.Retrieved_Safety_Reference_Excerpts
     )
 
     markdown.extend(

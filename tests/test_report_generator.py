@@ -21,7 +21,7 @@ def make_valid_report():
             "This is an educational test report.",
             "The output is not a clinical decision.",
         ],
-        FDA_Safety_Warnings_Cited=[
+        Retrieved_Safety_Reference_Excerpts=[
             "Verify relevant safety information against authoritative sources."
         ],
         Disclaimer=(
@@ -37,7 +37,7 @@ def make_validation_error():
         "Eligible_For_Vaccine": False,
         "Recommended_Dose_mg": -1.0,
         "Reasoning_Steps": ["Test reasoning"],
-        "FDA_Safety_Warnings_Cited": ["Test warning"],
+        "Retrieved_Safety_Reference_Excerpts": ["Test warning"],
         "Disclaimer": (
             "Student engineering project output only. "
             "Not real clinical, medical, or regulatory guidance."
@@ -137,7 +137,7 @@ def test_grounded_report_extracts_warnings_from_all_chunks():
         chunks=chunks,
     )
 
-    warnings_text = " ".join(report.FDA_Safety_Warnings_Cited)
+    warnings_text = " ".join(report.Retrieved_Safety_Reference_Excerpts)
 
     assert "First source warning" in warnings_text
     assert "Second source warning" in warnings_text
@@ -154,7 +154,7 @@ def test_llm_report_guardrails_force_educational_values():
         Eligible_For_Vaccine=True,
         Recommended_Dose_mg=99.0,
         Reasoning_Steps=["The model generated this summary."],
-        FDA_Safety_Warnings_Cited=[
+        Retrieved_Safety_Reference_Excerpts=[
             "This exact sentence is present in the source."
         ],
         Disclaimer=(
@@ -178,7 +178,7 @@ def test_llm_report_guardrails_force_educational_values():
 
     assert report.Eligible_For_Vaccine is False
     assert report.Recommended_Dose_mg == 0.05
-    assert report.FDA_Safety_Warnings_Cited == chunks
+    assert report.Retrieved_Safety_Reference_Excerpts == chunks
     assert report.Disclaimer == (
         "Student engineering project output only. "
         "Not real clinical, medical, or regulatory guidance."
@@ -190,7 +190,7 @@ def test_llm_report_discards_ungrounded_warning():
     from src.report_generator import build_llm_report_with_retry
 
     candidate = make_valid_report()
-    candidate.FDA_Safety_Warnings_Cited = ["Unsupported invented warning"]
+    candidate.Retrieved_Safety_Reference_Excerpts = ["Unsupported invented warning"]
 
     with patch(
         "src.report_generator._invoke_llm_structured",
@@ -203,7 +203,7 @@ def test_llm_report_discards_ungrounded_warning():
             chunks=["A source excerpt about storage."],
         )
 
-    assert report.FDA_Safety_Warnings_Cited == [
+    assert report.Retrieved_Safety_Reference_Excerpts == [
         "No directly matching warning excerpt was verified "
         "in the retrieved educational source."
     ]

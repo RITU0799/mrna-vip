@@ -8,7 +8,7 @@ class ClinicalSafetyReport(BaseModel):
     Eligible_For_Vaccine: bool
     Recommended_Dose_mg: float = Field(ge=0)
     Reasoning_Steps: List[str] = Field(min_length=1)
-    FDA_Safety_Warnings_Cited: List[str] = Field(min_length=1)
+    Retrieved_Safety_Reference_Excerpts: List[str] = Field(min_length=1)
     Disclaimer: str = DISCLAIMER
 
     @field_validator("Disclaimer")
